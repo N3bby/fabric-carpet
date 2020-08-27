@@ -23,7 +23,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.text.LiteralText;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec2f;
 import net.minecraft.util.math.Vec3d;
@@ -109,9 +109,9 @@ public class PlayerCommand
 
             if(playerToCheck.fishHook != null) {
                 final boolean isInOpenWater = playerToCheck.fishHook.isInOpenWater();
-                playerCommandSource.sendMessage(Text.of(String.format("isFishingInOpenWater: %s", isInOpenWater)), false);
+                playerCommandSource.sendMessage(new LiteralText(String.format("isFishingInOpenWater: %s", isInOpenWater)), false);
             } else {
-                playerCommandSource.sendMessage(Text.of(String.format("%s must be fishing!", playerToCheck.getName().asString())), false);
+                playerCommandSource.sendMessage(new LiteralText(String.format("%s must be fishing!", playerToCheck.getName().asString())), false);
             }
             return 0;
         } catch (CommandSyntaxException e) {
