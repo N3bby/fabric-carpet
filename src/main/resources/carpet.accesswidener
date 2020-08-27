@@ -3,3 +3,4 @@ accessWidener	v1	named
 accessible class net/minecraft/server/world/ThreadedAnvilChunkStorage$TicketManager
 accessible class net/minecraft/server/world/ServerLightingProvider$Stage
 accessible class net/minecraft/recipe/Ingredient$Entry
+accessible field net/minecraft/entity/projectile/FishingBobberEntity caughtFish Z

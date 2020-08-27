@@ -1,8 +1,8 @@
 package carpet.commands;
 
-import carpet.helpers.EntityPlayerActionPack;
 import carpet.CarpetSettings;
 import carpet.fakes.ServerPlayerEntityInterface;
+import carpet.helpers.EntityPlayerActionPack;
 import carpet.patches.EntityPlayerMPFake;
 import carpet.settings.SettingsManager;
 import carpet.utils.Messenger;
@@ -18,11 +18,12 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.command.argument.DimensionArgumentType;
 import net.minecraft.command.argument.RotationArgumentType;
 import net.minecraft.command.argument.Vec3ArgumentType;
-import net.minecraft.server.PlayerManager;
-import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.PlayerManager;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec2f;
 import net.minecraft.util.math.Vec3d;
@@ -45,7 +46,7 @@ public class PlayerCommand
     // TODO: allow any order like execute
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher)
     {
-        LiteralArgumentBuilder<ServerCommandSource> literalargumentbuilder = literal("player")
+        LiteralArgumentBuilder<ServerCommandSource> literalArgumentBuilder = literal("player")
                 .requires((player) -> SettingsManager.canUseCommand(player, CarpetSettings.commandPlayer))
                 .then(argument("player", StringArgumentType.word())
                         .suggests( (c, b) -> suggestMatching(getPlayers(c.getSource()), b))
@@ -67,6 +68,8 @@ public class PlayerCommand
                         .then(literal("unsneak").executes(manipulation(ap -> ap.setSneaking(false))))
                         .then(literal("sprint").executes(manipulation(ap -> ap.setSprinting(true))))
                         .then(literal("unsprint").executes(manipulation(ap -> ap.setSprinting(false))))
+                        .then(literal("fish").executes(manipulation(ap -> ap.setFishing(true))))
+                        .then(literal("isFishingInOpenWater").executes(PlayerCommand::isFishingInOpenWater))
                         .then(literal("look")
                                 .then(literal("north").executes(manipulation(ap -> ap.look(Direction.NORTH))))
                                 .then(literal("south").executes(manipulation(ap -> ap.look(Direction.SOUTH))))
@@ -96,7 +99,25 @@ public class PlayerCommand
                                 ))
                         )
                 );
-        dispatcher.register(literalargumentbuilder);
+        dispatcher.register(literalArgumentBuilder);
+    }
+
+    private static int isFishingInOpenWater(final CommandContext<ServerCommandSource> context) {
+        try {
+            final ServerPlayerEntity playerToCheck = getPlayer(context);
+            final ServerPlayerEntity playerCommandSource = context.getSource().getPlayer();
+
+            if(playerToCheck.fishHook != null) {
+                final boolean isInOpenWater = playerToCheck.fishHook.isInOpenWater();
+                playerCommandSource.sendMessage(Text.of(String.format("isFishingInOpenWater: %s", isInOpenWater)), false);
+            } else {
+                playerCommandSource.sendMessage(Text.of(String.format("%s must be fishing!", playerToCheck.getName().asString())), false);
+            }
+            return 0;
+        } catch (CommandSyntaxException e) {
+            // Is thrown when command is not executed by a player (getPlayer fails)
+            throw new RuntimeException(e);
+        }
     }
 
     private static LiteralArgumentBuilder<ServerCommandSource> makeActionCommand(String actionName, EntityPlayerActionPack.ActionType type)

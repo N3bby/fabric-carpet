@@ -1,6 +1,7 @@
 package carpet.helpers;
 
 import carpet.fakes.ServerPlayerEntityInterface;
+import com.google.common.collect.Lists;
 import net.minecraft.block.BlockState;
 import net.minecraft.command.argument.EntityAnchorArgumentType;
 import net.minecraft.entity.Entity;
@@ -8,20 +9,18 @@ import net.minecraft.entity.passive.HorseBaseEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.entity.vehicle.MinecartEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec2f;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +40,7 @@ public class EntityPlayerActionPack
 
     private boolean sneaking;
     private boolean sprinting;
+    private boolean fishing;
     private float forward;
     private float strafing;
 
@@ -92,6 +92,10 @@ public class EntityPlayerActionPack
         return this;
     }
 
+    public EntityPlayerActionPack setFishing(final boolean doFish) {
+        fishing = doFish;
+        return this;
+    }
     public EntityPlayerActionPack setForward(float value)
     {
         forward = value;
@@ -115,6 +119,7 @@ public class EntityPlayerActionPack
         }
         return this;
     }
+
     public EntityPlayerActionPack look(Vec2f rotation)
     {
         return look(rotation.x, rotation.y);
@@ -158,7 +163,18 @@ public class EntityPlayerActionPack
     {
         for (ActionType type : actions.keySet()) type.stop(player, actions.get(type));
         actions.clear();
+        stopFishing();
         return stopMovement();
+    }
+
+    private void stopFishing() {
+        this.fishing = false;
+        if(player.fishHook != null) {
+            final Item itemInMainHand = Lists.newArrayList(player.getItemsHand()).get(0).getItem();
+            if (Items.FISHING_ROD.equals(itemInMainHand)) {
+                itemInMainHand.use(player.world, player, player.getActiveHand());
+            }
+        }
     }
 
     public EntityPlayerActionPack mount(boolean onlyRideables)
@@ -197,6 +213,7 @@ public class EntityPlayerActionPack
             player.startRiding(closest,true);
         return this;
     }
+
     public EntityPlayerActionPack dismount()
     {
         player.stopRiding();
@@ -228,6 +245,20 @@ public class EntityPlayerActionPack
                 {
                     using.retry(this, ActionType.USE);
                 }
+            }
+        }
+        if (fishing) {
+            final ItemStack itemInMainHand = Lists.newArrayList(player.getItemsHand()).get(0);
+            if(Items.FISHING_ROD.equals(itemInMainHand.getItem())) {
+                if (player.fishHook == null) {
+                    itemInMainHand.getItem().use(player.world, player, player.getActiveHand());
+                } else {
+                    if (player.fishHook.caughtFish) {
+                        itemInMainHand.getItem().use(player.world, player, player.getActiveHand());
+                    }
+                }
+            } else {
+                setFishing(false);
             }
         }
         if (forward != 0.0F)
