@@ -1,8 +1,8 @@
 package carpet.commands;
 
-import carpet.helpers.EntityPlayerActionPack;
 import carpet.CarpetSettings;
 import carpet.fakes.ServerPlayerEntityInterface;
+import carpet.helpers.EntityPlayerActionPack;
 import carpet.patches.EntityPlayerMPFake;
 import carpet.settings.SettingsManager;
 import carpet.utils.Messenger;
@@ -18,10 +18,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.command.argument.DimensionArgumentType;
 import net.minecraft.command.argument.RotationArgumentType;
 import net.minecraft.command.argument.Vec3ArgumentType;
-import net.minecraft.server.PlayerManager;
-import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.PlayerManager;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec2f;
@@ -32,9 +32,12 @@ import net.minecraft.world.World;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
+import static java.util.Arrays.stream;
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 import static net.minecraft.server.command.CommandSource.suggestMatching;
@@ -106,7 +109,18 @@ public class PlayerCommand
                 .then(literal("once").executes(c -> action(c, type, EntityPlayerActionPack.Action.once())))
                 .then(literal("continuous").executes(c -> action(c, type, EntityPlayerActionPack.Action.continuous())))
                 .then(literal("interval").then(argument("ticks", IntegerArgumentType.integer(2))
-                        .executes(c -> action(c, type, EntityPlayerActionPack.Action.interval(IntegerArgumentType.getInteger(c, "ticks"))))));
+                        .executes(c -> action(c, type, EntityPlayerActionPack.Action.interval(IntegerArgumentType.getInteger(c, "ticks"))))))
+                .then(literal("pattern").then(argument("ticks...", StringArgumentType.greedyString())
+                        .executes(c -> {
+                            final List<Integer> tickPattern = parseTickPattern(StringArgumentType.getString(c, "ticks..."));
+                            return action(c, type, EntityPlayerActionPack.Action.pattern(tickPattern));
+                        })));
+    }
+
+    private static List<Integer> parseTickPattern(final String pattern) {
+        return stream(pattern.trim().split(" "))
+                .map(Integer::parseInt)
+                .collect(Collectors.toList());
     }
 
     private static LiteralArgumentBuilder<ServerCommandSource> makeDropCommand(String actionName, boolean dropAll)

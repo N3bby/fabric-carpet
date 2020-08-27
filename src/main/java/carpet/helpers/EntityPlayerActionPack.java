@@ -1,6 +1,7 @@
 package carpet.helpers;
 
 import carpet.fakes.ServerPlayerEntityInterface;
+import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.command.argument.EntityAnchorArgumentType;
 import net.minecraft.entity.Entity;
@@ -9,6 +10,7 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.entity.vehicle.MinecartEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.server.world.ServerWorld;
@@ -497,6 +499,8 @@ public class EntityPlayerActionPack
         public final int limit;
         public final int interval;
         public final int offset;
+        private List<Integer> pattern = null;
+        private int patternIndex = 0;
         private int count;
         private int next;
 
@@ -506,6 +510,16 @@ public class EntityPlayerActionPack
             this.interval = interval;
             this.offset = offset;
             next = interval + offset;
+        }
+
+        private Action(final List<Integer> pattern) {
+            this(-1, 1,  0);
+            if(pattern.size() < 1) {
+                throw new IllegalArgumentException("Action pattern should at least contain 1 tick value");
+            }
+            this.pattern = pattern;
+            next = pattern.get(0) + offset;
+            incrementPatternIndex();
         }
 
         public static Action once()
@@ -528,6 +542,10 @@ public class EntityPlayerActionPack
             return new Action(-1, interval, offset);
         }
 
+        public static Action pattern(final List<Integer> tickPattern) {
+            return new Action(tickPattern);
+        }
+
         Boolean tick(EntityPlayerActionPack actionPack, ActionType type)
         {
             next--;
@@ -545,7 +563,12 @@ public class EntityPlayerActionPack
                     done = true;
                     return cancel;
                 }
-                next = interval;
+                if(pattern != null) {
+                    next = pattern.get(patternIndex);
+                    incrementPatternIndex();
+                } else {
+                    next = interval;
+                }
             }
             else
             {
@@ -571,5 +594,11 @@ public class EntityPlayerActionPack
                 done = true;
             }
         }
+
+        private void incrementPatternIndex() {
+            patternIndex++;
+            patternIndex = patternIndex % pattern.size();
+        }
+
     }
 }
